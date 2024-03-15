@@ -12,7 +12,7 @@ def prediction_function(matrix, input_user, similarities, max_recommendations):
             if not np.isnan(matrix.loc[other_user, movie]):
                 other_mean = matrix.loc[other_user].mean()
                 numerator += similarity * (matrix.loc[other_user, movie] - other_mean)
-                denominator += similarity
+                denominator += np.abs(similarity)
         
         scores[movie] = input_mean + (numerator / denominator) if denominator != 0 else 0
     
