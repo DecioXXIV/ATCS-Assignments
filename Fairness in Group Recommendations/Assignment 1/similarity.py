@@ -17,7 +17,7 @@ def pearson_similarity(matrix, input_user, other_user):
     denominator = np.sqrt(np.sum((input_coratings - input_mean)**2)) * np.sqrt(np.sum((other_coratings - other_mean)**2))
 
     if denominator == 0:
-        return input_mean
+        return 0
     else:
         return numerator / denominator
 
