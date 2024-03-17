@@ -4,4 +4,4 @@ This repository contains the code related to the Assignments carried out during 
 
 | Lectures | Teacher | Topics |
 | - | - | - |
-| [Fairness in Group Recommendations](https://github.com/DecioXXIV/ATCS-Assignments/tree/main/Fairness%20in%20Group%20Recommendations) | [Prof. Kostantinos Stefanidis](https://homepages.tuni.fi/konstantinos.stefanidis/) | Recommender Systems, Explainability |
+| [Fairness in Group Recommendations](https://github.com/DecioXXIV/ATCS-Assignments/tree/main/Fairness%20in%20Group%20Recommendations) | [Prof. Kostantinos Stefanidis](https://scholar.google.com/citations?user=Lck1uq8AAAAJ&hl=en) | Recommender Systems, Explainability |
