@@ -63,6 +63,22 @@ def alpha_hybrid_aggregation(alpha, list_of_scores):
     
     return alpha_hybrid_matrix
 
+def update_alpha_mom_disagreements(satisfactions):
+    values = satisfactions.values
+
+    value_pairs = list(combinations(values, 2))
+    disagreements = np.zeros(len(value_pairs))
+
+    for i, pair in enumerate(value_pairs):
+        disagreements[i] = np.abs(pair[0] - pair[1])
+    
+    disagreement_pairs = list(combinations(disagreements, 2))
+    averages = np.zeros(len(values))
+    for i, pair in enumerate(disagreement_pairs):
+        averages[i] = np.mean(pair)
+    
+    return np.median(averages)
+
 def group_recommendation(predictions, movie_map, max_recommendations):
     predictions = {k: v for k, v in sorted(predictions.items(), key=lambda item: item[1], reverse=True)}
     predictions = dict(list(predictions.items())[:max_recommendations])
