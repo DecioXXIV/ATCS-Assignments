@@ -1,7 +1,14 @@
 import numpy as np
 
 def pearson_similarity(matrix, input_user, other_user):
-    # Implemetation of the "Pearson Similarity" formula
+    """
+    Compute the Pearson Similarity between two users.
+    
+    Parameters:
+    - X (pandas.DataFrame): The User-Item rating matrix.
+    - input_user (int): The ID of the Input User.
+    - other_user (int): The ID of the Other User.
+    """
     input_mean = matrix.loc[input_user].mean()
     other_mean = matrix.loc[other_user].mean()
 

@@ -14,6 +14,15 @@ def get_movie_map():
     return movie_map
 
 def split_dataset(num_iterations, seed):
+    """
+    Split the Dataset into several parts.
+    The first part (50% of the total Dataset) is used as the starting Dataset.
+    The other parts (num = num_iterations-1) are used to enrich the Dataset after each iteration.
+
+    Parameters:
+    - num_iterations (int): The number of iterations to be performed.
+    - seed (int): The seed for the random shuffling of the Dataset.
+    """
     indices_split = np.array_split(ratings.index, NUM_THREADS)
 
     with ThreadPoolExecutor(max_workers=NUM_THREADS) as executor:
@@ -22,6 +31,8 @@ def split_dataset(num_iterations, seed):
             executor.submit(process_subdf, df_subset)
     
     list_of_ratings = list(ratings_dict.items())
+    # The "list_of_ratings" is a list of tuples: ((user, movie), rating)
+
     random.seed(seed)
     random.shuffle(list_of_ratings)
 
@@ -46,6 +57,13 @@ def process_subdf(df):
         ratings_dict[(user, movie)] = rating
     
 def get_starting_dataset(first_half):
+    """
+    Create the starting Dataset as a pandas.DataFrame
+
+    Parameters:
+    - first_half (list): The first half of the Dataset, containing the Ratings for the Movies.
+    Each element is a tuple: ((user, movie), rating)
+    """
     user_ids = ratings['userId'].unique().tolist()
     movie_ids = movies['movieId'].unique().tolist()
 
@@ -59,6 +77,14 @@ def get_starting_dataset(first_half):
     return matrix
 
 def enrich_dataset(matrix, chunk):
+    """
+    Enriches the Dataset with the Ratings from the current chunk.
+
+    Parameters:
+    - matrix (pandas.DataFrame): The current Dataset.
+    - chunk (list): The chunk containing the Ratings for the Movies.
+    Each element of "chunk" is a tuple: ((user, movie), rating)
+    """
     for pair in chunk:
         user, movie = pair[0][0], pair[0][1]
         rating = pair[1]
