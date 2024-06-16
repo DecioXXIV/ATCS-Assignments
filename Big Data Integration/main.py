@@ -1,10 +1,12 @@
 import os
 import numpy as np
 import pandas as pd
-import csv
 from argparse import ArgumentParser
+from tqdm import tqdm
 from prepare_sources import prepare_source
 from blocking import train_fastText, vectorize_instances,  build_LSH_tables, define_pw_matchings_to_perform
+from pairwise_matching import get_index_mapping, build_similarity_matrix, compute_expected_cluster_size
+from clustering import instantiate_llm, build_pw_prompt, query_llm
 
 def get_args():
     parser = ArgumentParser(description='Hyperparameters', add_help=True)
@@ -41,13 +43,10 @@ else:
 print("\n*** PHASE 2 -> BLOCKING ***")
 instances = pd.read_csv(f'./datasets/{DATASET}/instances_refined.csv', index_col=0, header=0, dtype=str)
 
-for col in instances.columns:
-    instances[col] = instances[col].astype(str)
-
 word_weights = pd.read_csv(f'./datasets/{DATASET}/word_weights.csv', index_col=0, header=0)
 
 ft_model = train_fastText(instances, LS_DIM, DATASET)
-instance_vectors = vectorize_instances(instances, ft_model, word_weights)
+instance_vectors = vectorize_instances(instances, ft_model, word_weights, DATASET)
 
 rho = np.log(1/P1) / np.log(1/P2)
 L = round(len(instances)**rho)
@@ -61,41 +60,41 @@ if K == 0:
 tables = build_LSH_tables(instance_vectors, L, K, LS_DIM)
 define_pw_matchings_to_perform(tables, DATASET)
 
-gt = pd.read_csv(f'./datasets/{DATASET}/ground_truth.csv', header=0)
-tn, fn, fp, tp = 0, 0, 0, 0
-
-matchings_to_perform = 0
-with open(f"./datasets/{DATASET}/pw_matchings_to_perform.csv", "r") as f:
-    csv_reader = csv.reader(f)
-    for row in csv_reader:
-        matchings_to_perform += 1
-        i1, i2 = row
-        for idx in gt.index:
-            if (i1, i2) == (gt.at[idx, 'ltable_id'], gt.at[idx, 'rtable_id']) or (i2, i1) == (gt.at[idx, 'ltable_id'], gt.at[idx, 'rtable_id']):
-                if gt.at[idx, 'label'] == 1:
-                    tp += 1
-                else:
-                    fp += 1
-            else:
-                if gt.at[idx, 'label'] == 1:
-                    fn += 1
-                else:
-                    tn += 1
-
-
-print(f"Total Comparisons Baseline: {int(len(instances) * (len(instances) - 1) / 2)}")
-print(f"Total Comparisons to Perform: {matchings_to_perform}")
-print(f"Percentual Reduction: {100 - (100*matchings_to_perform / (len(instances) * (len(instances) - 1) / 2))}%")
-
-recall = tp / (tp + fn)
-precision = tp / (tp + fp)
-f_measure = 2 * (precision * recall) / (precision + recall)
-
-print(f"Recall: {recall}")
-print(f"Precision: {precision}")
-print(f"F-Measure: {f_measure}")
-
 ### PHASE 3 -> PAIRWISE MATCHING ###
-
+print("\n*** PHASE 3 -> PAIRWISE MATCHING ***")
+instance_vectors = pd.read_csv(f'./datasets/{DATASET}/instance_vectors.csv', index_col=0, header=0)
+index_mapping = get_index_mapping(instance_vectors)
+similarity_matrix = build_similarity_matrix(instance_vectors, index_mapping, DATASET)
+ecs = compute_expected_cluster_size(similarity_matrix, index_mapping)
 
 ### PHASE 4 -> CLUSTERING ###
+print("\n*** PHASE 4 -> CLUSTERING ***")
+llm = instantiate_llm()
+rl_prompt = build_pw_prompt()
+
+node_clusters = dict()
+for idx in instances.index:
+    node_clusters[idx] = set()
+
+for k in tqdm(ecs.keys(), desc="Processing nodes"):
+    if len(node_clusters[k]) == 0:
+        node_id = index_mapping[k]
+        neighbors = dict()
+        for i, sim in enumerate(similarity_matrix[index_mapping[k]]):
+            if sim > 0:
+                neighbors[instances.index[i]] = sim
+        
+        neighbors = {k: v for k, v in sorted(neighbors.items(), key=lambda item: item[1], reverse=True)}
+
+        for n in neighbors:
+            resp = query_llm(llm, rl_prompt, DATASET, instances, k, n)
+            if 'MATCH' in resp:
+                node_clusters[k].add(n)
+                node_clusters[k].update(node_clusters[n])
+
+                node_clusters[n].add(k)
+                node_clusters[n].update(node_clusters[k])
+
+with open(f'./datasets/{DATASET}/report.txt', 'w') as f:
+    for k in node_clusters:
+        f.write(f"Node {k} -> {node_clusters[k]}\n")
