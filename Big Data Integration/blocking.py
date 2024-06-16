@@ -14,11 +14,11 @@ def train_fastText(instances, LS_DIM, DATASET):
                     line += instances.at[idx, col] + " "
             f.write(line + "\n")
     
-    model = fastText.train_unsupervised(f"./datasets/{DATASET}/instances_refined.txt", model='cbow', lr=0.07, dim=LS_DIM, ws=2, epoch=250, minCount=1, wordNgrams=3, thread=os.cpu_count(), verbose=2)
+    model = fastText.train_unsupervised(f"./datasets/{DATASET}/instances_refined.txt", model='cbow', lr=0.07, dim=LS_DIM, ws=2, epoch=500, minCount=1, wordNgrams=3, thread=os.cpu_count(), verbose=2)
 
     return model
 
-def vectorize_instances(instances, ft_model, word_weights):
+def vectorize_instances(instances, ft_model, word_weights, DATASET):
     instance_vectors = pd.DataFrame(columns=range(0, ft_model.get_dimension()), index=instances.index)
     for idx in tqdm(instances.index, desc="Vectorizing Instances"):
         attribute_vectors = list()
@@ -41,6 +41,7 @@ def vectorize_instances(instances, ft_model, word_weights):
         final_vector /= len(attribute_vectors)
         instance_vectors.loc[idx] = final_vector
     
+    instance_vectors.to_csv(f"./datasets/{DATASET}/instance_vectors.csv", header=True, index=True)
     return instance_vectors
 
 def generate_buckets(K):
@@ -76,13 +77,19 @@ def build_LSH_tables(instance_vectors, L, K, LS_DIM):
     return tables
 
 def define_pw_matchings_to_perform(tables, DATASET):
+    total_comparisons = set()
+    for table in tables:
+        buckets = table['buckets']
+        for instance_list in buckets.values():
+            total_comparisons.update(itertools.combinations(instance_list, 2))
+    
     with open(f"./datasets/{DATASET}/pw_matchings_to_perform.csv", "w") as f:
-        for i, table in enumerate(tables):
-            buckets = table['buckets']
-            for j, instance_list in enumerate(buckets.values()):
-                for p in itertools.combinations(instance_list, 2):
-                    i1, i2 = p
-                    i1_source, i2_source = i1[0], i2[0]
-                    if i1_source != i2_source: 
-                        f.write(f"{i1},{i2}\n")
-            print(f"Table {i + 1}/{len(tables)} processed")
+        to_skip = set()
+        for pair in total_comparisons:
+            i1, i2 = pair
+            if (i2, i1) in total_comparisons:
+                to_skip.add((i2, i1))
+            
+            i1_source, i2_source = i1[0], i2[0]
+            if (i1, i2) not in to_skip and i1_source != i2_source:
+                f.write(f"{i1},{i2}\n")
