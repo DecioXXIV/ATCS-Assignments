@@ -14,7 +14,7 @@ def train_fastText(instances, LS_DIM, DATASET):
                     line += instances.at[idx, col] + " "
             f.write(line + "\n")
     
-    model = fastText.train_unsupervised(f"./datasets/{DATASET}/instances_refined.txt", model='cbow', lr=0.07, dim=LS_DIM, ws=2, epoch=500, minCount=1, wordNgrams=3, thread=os.cpu_count(), verbose=2)
+    model = fastText.train_unsupervised(f"./datasets/{DATASET}/instances_refined.txt", model='cbow', lr=0.07, dim=LS_DIM, ws=2, epoch=250, minCount=1, wordNgrams=3, thread=os.cpu_count(), verbose=2)
 
     return model
 
@@ -75,28 +75,14 @@ def build_LSH_tables(instance_vectors, L, K, LS_DIM):
     
     return tables
 
-def define_pw_matchings_to_perform(tables):
-    total_comparisons = set()
-    for i, table in enumerate(tables):
-        buckets = table['buckets']
-        for instance_list in buckets.values():
-            pairs = set(itertools.combinations(instance_list, 2))
-            pairs = list(pairs)
-            for p in pairs: total_comparisons.add(p)
-    
-    deduplicated_comparisons, to_skip = set(), set()
-    for pair in total_comparisons:
-        if pair not in to_skip:
-            i1, i2 = pair
-            deduplicated_comparisons.add((i1, i2))
-            if (i2, i1) in total_comparisons:
-                to_skip.add((i2, i1))
-    
-    final_comparisons = set()
-    for pair in deduplicated_comparisons:
-        i1, i2 = pair
-        i1_source, i2_source = i1[0], i2[0]
-        if i1_source != i2_source:
-            final_comparisons.add(pair)
-    
-    return final_comparisons
+def define_pw_matchings_to_perform(tables, DATASET):
+    with open(f"./datasets/{DATASET}/pw_matchings_to_perform.csv", "w") as f:
+        for i, table in enumerate(tables):
+            buckets = table['buckets']
+            for j, instance_list in enumerate(buckets.values()):
+                for p in itertools.combinations(instance_list, 2):
+                    i1, i2 = p
+                    i1_source, i2_source = i1[0], i2[0]
+                    if i1_source != i2_source: 
+                        f.write(f"{i1},{i2}\n")
+            print(f"Table {i + 1}/{len(tables)} processed")
