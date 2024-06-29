@@ -42,6 +42,8 @@ else:
 ### PHASE 2 -> BLOCKING ###
 print("\n*** PHASE 2 -> BLOCKING ***")
 instances = pd.read_csv(f'./datasets/{DATASET}/instances_refined.csv', index_col=0, header=0, dtype=str)
+for col in instances.columns:
+    instances[col] = instances[col].astype(str)
 
 word_weights = pd.read_csv(f'./datasets/{DATASET}/word_weights.csv', index_col=0, header=0)
 
