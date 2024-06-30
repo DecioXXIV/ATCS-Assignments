@@ -14,7 +14,7 @@ def instantiate_llm():
         temperature=0.2,
         n_threads=os.cpu_count(),
         max_tokens=128,
-        n_ctx=512,
+        n_ctx=1024,
         verbose=False,
     )
 
@@ -24,11 +24,40 @@ def build_pw_prompt():
     rl_template = """<|begin_of_text|>
     <|start_header_id|>system<|end_header_id|>
     You are a helpful AI assistant capable of reading and understanding item specifications.
-    I will provide you with two item specifications, each containing several attributes. Your task is to determine if they refer to the same entity.
+    I will provide you with two item specifications, each containing several attributes: your task is to determine if they refer to the same real-world entity.
 
-    If you think that the specifications refer to the same entity, respond with "MATCH"; otherwise, respond with "REJECT". Be flexible, as the same entity might be described in different ways: focus on the meaning of the attributes.
-    Don't add any additional information to your response.
+    If you think that the specifications refer to the same entity, respond with "MATCH"; otherwise, even if you are unsure, respond with "REJECT". 
     Note: If an attribute value is 'nan', consider it as 'not present'.
+    Don't add any additional information to your response.
+
+    I'm giving you an example of a 'MATCH' pair and a 'REJECT' pair to help you understand the task better.
+    ITEM 1:
+    **Full Name**: Mario Rossi
+    **Address**: Via Garibaldi 10, Roma
+    **Birth Date**: 1980-05-12
+    **Phone Number**: 3456789101
+
+    ITEM 2:
+    **Full Name**: M. Rossi
+    **Address**: V. Garibaldi 10, 00184, Roma
+    **Birth Date**: nan
+    **Phone Number**: +39-345-678-9101
+
+    EXPECTED RESPONSE: 'MATCH'
+
+    ITEM 1:
+    **Full Name**: Luigi Bianchi
+    **Address**: Via Verdi 15
+    **Birth Date**: nan
+    **Phone Number**: +39-366-678-9101
+    
+    ITEM 2:
+    **Full Name**: Luigi Bianchi
+    **Address**: Via Garibaldi 10
+    **Birth Date**: nan
+    **Phone Number**: +39-366-678-9100 
+
+    EXPECTED RESPONSE: 'REJECT'
     <|eot_id|>
 
     <|start_header_id|>user<|end_header_id|>

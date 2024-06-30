@@ -7,7 +7,6 @@ CWD = os.getcwd()
 AB_DIR = CWD + '/datasets/Abt_Buy/'
 BEERS_DIR = CWD + '/datasets/Beers/'
 PAPERS_DIR = CWD + '/datasets/DBLP_ACM/'
-MUSIC_DIR = CWD + '/datasets/iTunes_Amazon/'
 
 ### ################# ###
 ### SUPPORT FUNCTIONS ###
@@ -32,9 +31,6 @@ def prepare_source(dataset):
         case 'DBLP_ACM':
             dblp_acm_instances = pd.read_csv(PAPERS_DIR + 'instances.csv', index_col=0, header=0, dtype=str)
             prepare_dblp_acm(dblp_acm_instances)
-        case 'iTunes_Amazon':
-            itunes_amazon_instances = pd.read_csv(MUSIC_DIR + 'instances.csv', index_col=0, header=0, dtype=str)
-            prepare_itunes_amazon(itunes_amazon_instances)
         case _:
             raise ValueError("Invalid Dataset: choose among the Datasets in './datasets/'")
 
@@ -131,42 +127,3 @@ def prepare_dblp_acm(instances):
     weights_df.to_csv(PAPERS_DIR + 'word_weights.csv', index=False, header=True)
 
     instances.to_csv(PAPERS_DIR + 'instances_refined.csv', index=True, header=True)
-
-def prepare_itunes_amazon(instances):
-    instances['Song_Name'] = instances['Song_Name'].astype(str).apply(clean_text)
-    instances['Artist_Name'] = instances['Album_Name'].astype(str).apply(clean_text)
-    instances['Album_Name'] = instances['Album_Name'].astype(str).apply(clean_text)
-    instances['Genre'] = instances['Genre'].astype(str).apply(clean_text)
-    instances['Price'] = instances['Price'].astype(str).apply(clean_text)
-    instances['CopyRight'] = instances['CopyRight'].astype(str).apply(clean_text)
-    instances['Time'] = instances['Time'].astype(str).apply(clean_text)
-    instances['Released'] = instances['Released'].astype(str).apply(clean_text)
-
-    word_weights = dict()
-    for idx in tqdm(instances.index, desc="Computing Word Weights for each Record in 'iTunes-Amazon'"):
-        song, artist, album, genre, price, copyright, time, released = instances.loc[idx]
-        words = set()
-        if song != 'nan': words.update(song.split())
-        if artist != 'nan': words.update(artist.split())
-        if album != 'nan': words.update(album.split())
-        if genre != 'nan': words.update(genre.split())
-        if price != 'nan': words.update(price.split())
-        if copyright != 'nan': words.update(copyright.split())
-        if time != 'nan': words.update(time.split())
-        if released != 'nan': words.update(released.split())
-
-        for word in words:
-            if word not in word_weights:
-                word_weights[word] = 0
-            word_weights[word] += 1
-        
-    for word, weight in word_weights.items():
-        word_weights[word] = np.log(len(instances) / weight)
-    
-    weights_df = pd.DataFrame(columns=['word', 'weight'])
-    weights_df['word'] = word_weights.keys()
-    weights_df['weight'] = word_weights.values()
-
-    weights_df.to_csv(MUSIC_DIR + 'word_weights.csv', index=False, header=True)
-
-    instances.to_csv(MUSIC_DIR + 'instances_refined.csv', index=True, header=True)
